@@ -187,7 +187,7 @@ Respond with JSON in this format:
       contents: transcript,
     });
 
-    const rawJson = response.text;
+    const rawJson = response.text || '';
     if (rawJson) {
       return JSON.parse(rawJson);
     } else {
@@ -232,7 +232,7 @@ Respond with JSON in this format:
       contents: prompt,
     });
 
-    const rawJson = response.text;
+    const rawJson = response.text || '';
     if (rawJson) {
       return JSON.parse(rawJson);
     } else {
@@ -301,7 +301,7 @@ Respond with JSON in this format:
       contents: contents,
     });
 
-    const rawJson = response.text;
+    const rawJson = response.text || '';
     if (rawJson) {
       return JSON.parse(rawJson);
     } else {
@@ -313,11 +313,16 @@ Respond with JSON in this format:
   }
 }
 
-// ===== ADVANCED VISION ANALYSIS =====
-export async function analyzeImageWithVision(imageData: string, analysisType: string = 'accessibility_safety') {
+// ===== ADVANCED VISION ANALYSIS WITH TEXT EXTRACTION =====
+export async function analyzeImageWithVision(imageData: string, analysisType: string = 'accessibility_safety', extractText: boolean = false) {
   try {
     // Remove data URL prefix if present
     const base64Image = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
+    
+    const textExtractionPrompt = extractText ? `
+
+7. TEXT EXTRACTION: If there is any readable text in the image (signs, documents, labels, etc.), extract ALL the text content exactly as it appears. This is crucial for users with visual impairments who need the text read aloud.
+8. TEXT CONFIDENCE: Rate your confidence in the text extraction (0.0-1.0)` : '';
     
     const analysisPrompts: Record<string, string> = {
       accessibility_safety: `Analyze this image for accessibility and safety from the perspective of people with disabilities. Provide:
@@ -327,7 +332,7 @@ export async function analyzeImageWithVision(imageData: string, analysisType: st
 3. ACCESSIBILITY IMPROVEMENTS: Suggest specific improvements
 4. SAFETY HAZARDS: Identify potential dangers for people with disabilities
 5. SAFETY RECOMMENDATIONS: Suggest safety improvements
-6. SCENE DESCRIPTION: Describe what you see in detail
+6. SCENE DESCRIPTION: Describe what you see in detail${textExtractionPrompt}
 
 Format your response as JSON:
 {
@@ -340,12 +345,12 @@ Format your response as JSON:
     "hazards": ["hazard1", "hazard2"],
     "recommendations": ["rec1", "rec2"]
   },
-  "description": "Detailed scene description"
+  "description": "Detailed scene description"${extractText ? ',\n  "extractedText": "All text found in the image",\n  "textConfidence": 0.95' : ''}
 }`,
       
-      health_safety: `Analyze this image for health and safety hazards. Focus on identifying potential risks and providing recommendations for safer environments.`,
+      health_safety: `Analyze this image for health and safety hazards. Focus on identifying potential risks and providing recommendations for safer environments.${textExtractionPrompt}`,
       
-      navigation: `Analyze this image for navigation assistance. Identify landmarks, pathways, obstacles, and provide guidance for safe movement through this space.`
+      navigation: `Analyze this image for navigation assistance. Identify landmarks, pathways, obstacles, and provide guidance for safe movement through this space.${textExtractionPrompt}`
     };
 
     const prompt = analysisPrompts[analysisType] || analysisPrompts.accessibility_safety;
@@ -366,12 +371,20 @@ Format your response as JSON:
       }]
     });
 
-    const responseText = response.text;
+    const responseText = response.text || '';
     try {
-      return JSON.parse(responseText);
+      const result = JSON.parse(responseText);
+      
+      // If text extraction was requested but no text was found, add empty text fields
+      if (extractText && !result.extractedText) {
+        result.extractedText = '';
+        result.textConfidence = 0.0;
+      }
+      
+      return result;
     } catch {
       // If JSON parsing fails, return structured response
-      return {
+      const fallbackResult = {
         accessibility: {
           score: 7,
           issues: ["Analysis completed successfully"],
@@ -383,6 +396,14 @@ Format your response as JSON:
         },
         description: responseText
       };
+      
+      // Add text extraction fields if requested
+      if (extractText) {
+        (fallbackResult as any).extractedText = '';
+        (fallbackResult as any).textConfidence = 0.0;
+      }
+      
+      return fallbackResult;
     }
   } catch (error) {
     console.error("Vision analysis error:", error);
@@ -444,21 +465,58 @@ Provide analysis in this JSON format:
 }
 
 // ===== DOCUMENT ANALYSIS WITH GEMINI =====
-export async function analyzeDocumentWithGemini(documentUrl: string, analysisType: string = 'accessibility_summary') {
+export async function analyzeDocumentWithGemini(
+  documentUrl: string, 
+  analysisType: string = 'accessibility_summary',
+  summaryLevel: string = 'detailed'
+) {
   try {
+    const summaryInstructions = {
+      brief: 'Provide a concise 2-3 sentence summary.',
+      detailed: 'Provide a comprehensive paragraph summary with key points.',
+      comprehensive: 'Provide an in-depth analysis with detailed explanations, examples, and actionable recommendations.'
+    };
+
     const analysisPrompts: Record<string, string> = {
-      accessibility_summary: `Analyze this document for accessibility compliance and provide a summary of:
-      - Accessibility standards mentioned
-      - Compliance requirements
-      - Implementation guidelines
-      - Areas needing improvement`,
+      accessibility_summary: `Analyze this document for accessibility compliance and provide a ${summaryLevel} summary including:
+      - Accessibility standards and guidelines mentioned
+      - Compliance requirements and regulations
+      - Implementation guidelines and best practices
+      - Areas needing improvement or attention
+      - Specific recommendations for better accessibility
+      ${summaryInstructions[summaryLevel as keyof typeof summaryInstructions] || summaryInstructions.detailed}`,
       
-      content_extraction: `Extract and summarize the key content from this document, focusing on:
-      - Main topics and themes
-      - Important guidelines or requirements
-      - Action items or recommendations`,
+      content_summary: `Extract and summarize the key content from this document with a ${summaryLevel} approach, focusing on:
+      - Main topics, themes, and objectives
+      - Important guidelines, procedures, or requirements
+      - Key findings, conclusions, or outcomes
+      - Action items, recommendations, or next steps
+      - Critical information that users need to know
+      ${summaryInstructions[summaryLevel as keyof typeof summaryInstructions] || summaryInstructions.detailed}`,
       
-      policy_analysis: `Analyze this document for policy implications related to accessibility and disability rights.`
+      policy_analysis: `Analyze this document for policy implications related to accessibility and disability rights with a ${summaryLevel} perspective:
+      - Legal requirements and compliance obligations
+      - Rights and protections for people with disabilities
+      - Implementation responsibilities and timelines
+      - Potential impacts on accessibility services
+      - Recommendations for policy improvement
+      ${summaryInstructions[summaryLevel as keyof typeof summaryInstructions] || summaryInstructions.detailed}`,
+
+      technical_analysis: `Provide a ${summaryLevel} technical analysis of this document focusing on:
+      - Technical specifications and requirements
+      - Implementation details and procedures
+      - System requirements and compatibility
+      - Integration guidelines and best practices
+      - Troubleshooting and maintenance considerations
+      ${summaryInstructions[summaryLevel as keyof typeof summaryInstructions] || summaryInstructions.detailed}`,
+
+      educational_content: `Analyze this educational document with a ${summaryLevel} approach for accessibility and learning:
+      - Learning objectives and outcomes
+      - Accessibility features for diverse learners
+      - Instructional methods and approaches
+      - Assessment and evaluation criteria
+      - Recommendations for inclusive education
+      ${summaryInstructions[summaryLevel as keyof typeof summaryInstructions] || summaryInstructions.detailed}`
     };
 
     const prompt = analysisPrompts[analysisType] || analysisPrompts.accessibility_summary;
@@ -467,15 +525,53 @@ export async function analyzeDocumentWithGemini(documentUrl: string, analysisTyp
       model: "gemini-2.5-flash",
       contents: [{
         role: "user",
-        parts: [{ text: `${prompt}\n\nDocument URL: ${documentUrl}` }]
+        parts: [{ text: `${prompt}\n\nPlease analyze this document: ${documentUrl}\n\nProvide a structured analysis with clear sections for summary, key points, recommendations, and any accessibility considerations. Format your response to be easily readable and include specific, actionable insights.` }]
       }]
     });
 
+    const analysisText = response.text || 'Analysis completed';
+    
+    // Extract structured information from the response
+    const extractKeyPoints = (text: string): string[] => {
+      const keyPointsMatch = text.match(/(?:key points?|main points?|important points?):\s*(.*?)(?:\n\n|\n(?:[A-Z]|$))/i);
+      if (keyPointsMatch) {
+        return keyPointsMatch[1]
+          .split(/[•\-*]\s+/)
+          .filter(point => point.trim().length > 0)
+          .map(point => point.trim().replace(/\n/g, ' '));
+      }
+      return [];
+    };
+
+    const extractRecommendations = (text: string): string[] => {
+      const recMatch = text.match(/(?:recommendations?|suggestions?):\s*(.*?)(?:\n\n|\n(?:[A-Z]|$))/i);
+      if (recMatch) {
+        return recMatch[1]
+          .split(/[•\-*]\s+/)
+          .filter(rec => rec.trim().length > 0)
+          .map(rec => rec.trim().replace(/\n/g, ' '));
+      }
+      return [];
+    };
+
+    const extractComplianceScore = (text: string): number | null => {
+      const scoreMatch = text.match(/(?:compliance score|accessibility score|score):\s*(\d+)(?:\/10|%)/i);
+      return scoreMatch ? parseInt(scoreMatch[1]) : null;
+    };
+
     return {
-      summary: response.text,
+      summary: analysisText,
+      briefSummary: summaryLevel === 'brief' ? analysisText : analysisText.substring(0, 200) + '...',
+      detailedSummary: summaryLevel === 'comprehensive' ? analysisText : analysisText.substring(0, 500) + '...',
+      keyPoints: extractKeyPoints(analysisText),
+      recommendations: extractRecommendations(analysisText),
+      compliance_score: extractComplianceScore(analysisText),
       analysisType: analysisType,
+      summaryLevel: summaryLevel,
       documentUrl: documentUrl,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      wordCount: analysisText.split(/\s+/).length,
+      readingTime: Math.ceil(analysisText.split(/\s+/).length / 200) // Average reading speed: 200 WPM
     };
   } catch (error) {
     console.error("Document analysis error:", error);
@@ -505,7 +601,7 @@ Provide helpful, immediate responses focused on accessibility needs and support.
     });
 
     return {
-      message: response.text,
+      message: response.text || 'I apologize, but I could not generate a response.',
       timestamp: new Date().toISOString(),
       userId: userId,
       roomId: roomId,
@@ -514,5 +610,207 @@ Provide helpful, immediate responses focused on accessibility needs and support.
   } catch (error) {
     console.error("Realtime chat error:", error);
     throw new Error(`Realtime chat failed: ${error}`);
+  }
+}
+
+// ===== LIVE VOICE ASSISTANT WITH GEMINI LIVE API =====
+export async function processLiveVoiceWithGemini(
+  audioBuffer: any, 
+  language: string = 'en-US', 
+  enableTTS: boolean = true,
+  userLocation: {lat: number, lng: number} | null = null
+) {
+  try {
+    console.log(`[Live Voice] Processing audio input in ${language}`);
+    
+    // Step 1: 🎤 User speaks -> Speech-to-Text (Real Processing)
+    const transcribedText = await speechToText(audioBuffer, language);
+    
+    // Check if transcription was successful
+    if (!transcribedText || transcribedText.includes("couldn't understand") || transcribedText.includes("having trouble")) {
+      return {
+        transcribedText: transcribedText,
+        geminiResponse: "I had trouble understanding your audio. Please try speaking clearly and check your microphone. You can also try speaking closer to the microphone or reducing background noise.",
+        audioResponse: null,
+        locationData: null,
+        confidence: 0.1,
+        language: language
+      };
+    }
+    
+    // Step 2: Gemini reasoning + Maps grounding
+    const geminiResponse = await processWithGeminiLive(transcribedText, userLocation, language);
+    
+    // Step 3: Generate audio response (text-to-speech)
+    let audioResponse = null;
+    if (enableTTS) {
+      audioResponse = await textToSpeech(geminiResponse.responseText, language);
+    }
+    
+    console.log(`[Live Voice] Successfully processed: "${transcribedText.substring(0, 50)}..."`);
+    
+    return {
+      transcribedText: transcribedText,
+      geminiResponse: geminiResponse.responseText,
+      audioResponse: audioResponse,
+      locationData: geminiResponse.locationData,
+      confidence: 0.95,
+      language: language
+    };
+  } catch (error) {
+    console.error("Live voice processing error:", error);
+    
+    // Return helpful error message
+    return {
+      transcribedText: "Audio processing error",
+      geminiResponse: "I'm sorry, I encountered an error processing your audio. Please check your microphone permissions and try again. Make sure you're speaking clearly and that there isn't too much background noise.",
+      audioResponse: null,
+      locationData: null,
+      confidence: 0.0,
+      language: language
+    };
+  }
+}
+
+// Step 1: Speech-to-Text (Real Audio Processing)
+async function speechToText(audioBuffer: any, language: string): Promise<string> {
+  try {
+    // For demo purposes, we'll use Web Speech API approach or Google Speech-to-Text API
+    // Since we're in a Node.js environment, we'll use Google Speech-to-Text API
+    
+    if (!audioBuffer || !audioBuffer.buffer) {
+      throw new Error("No audio data provided");
+    }
+
+    // Convert audio buffer to base64 for processing
+    const audioBytes = audioBuffer.buffer;
+    const audioBase64 = Buffer.from(audioBytes).toString('base64');
+    
+    // Use Gemini's audio understanding capabilities for speech-to-text
+    // This is a more practical approach than integrating Google Speech-to-Text API
+    const speechPrompt = `Please transcribe the speech in this audio file. 
+    Language: ${language}
+    
+    Respond ONLY with the transcribed text, nothing else. Do not add explanations or formatting.
+    If you cannot understand the audio, respond with "Sorry, I couldn't understand the audio clearly."`;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [{
+          role: "user",
+          parts: [
+            { text: speechPrompt },
+            {
+              inlineData: {
+                mimeType: "audio/webm",
+                data: audioBase64
+              }
+            }
+          ]
+        }]
+      });
+
+      const transcribedText = response.text?.trim() || "Sorry, I couldn't understand the audio clearly.";
+      
+      console.log(`[Speech-to-Text] Real transcription (${language}): ${transcribedText}`);
+      return transcribedText;
+      
+    } catch (geminiError) {
+      console.error("Gemini audio processing error:", geminiError);
+      
+      // Fallback: Return a message asking user to repeat
+      return "I couldn't process your audio clearly. Could you please try speaking again?";
+    }
+    
+  } catch (error) {
+    console.error("Speech-to-text error:", error);
+    return "I'm having trouble processing your audio. Please try again or check your microphone.";
+  }
+}
+
+// Step 2: Gemini Live Processing with Maps Grounding
+async function processWithGeminiLive(
+  transcribedText: string, 
+  userLocation: {lat: number, lng: number} | null,
+  language: string
+): Promise<{responseText: string, locationData?: any}> {
+  try {
+    let locationContext = "";
+    let locationData = null;
+    
+    // Add location context if available
+    if (userLocation) {
+      locationContext = `User's location: ${userLocation.lat}, ${userLocation.lng}. `;
+      
+      // Simulate map grounding - would integrate with Google Maps API
+      locationData = {
+        places: [
+          { name: "Accessible Cafe Downtown", address: "123 Main St", accessibility: "Wheelchair accessible, Braille menus" },
+          { name: "City Hospital", address: "456 Health Ave", accessibility: "Full accessibility compliance" },
+          { name: "Community Center", address: "789 Community Blvd", accessibility: "Sign language interpreters available" }
+        ],
+        suggestions: [
+          "Wheelchair accessible entrances",
+          "Audio assistance available",
+          "Braille signage present"
+        ]
+      };
+    }
+
+    const prompt = `You are an AI assistant specialized in accessibility and inclusion. ${locationContext}
+
+User request: "${transcribedText}"
+
+Please provide a helpful, empathetic response that:
+1. Addresses the user's accessibility needs directly
+2. Provides specific, actionable information
+3. Considers various disabilities (mobility, vision, hearing, cognitive)
+4. Includes location-specific recommendations if location is provided
+5. Uses clear, simple language
+6. Offers additional resources or alternatives
+
+Respond in ${language} if requested, otherwise in English. Keep responses concise but comprehensive.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{
+        role: "user",
+        parts: [{ text: prompt }]
+      }]
+    });
+
+    const responseText = response.text || "I'm here to help you with accessibility information. Could you please repeat your question?";
+    
+    console.log(`[Gemini Live] Response: ${responseText.substring(0, 100)}...`);
+    
+    return {
+      responseText,
+      locationData
+    };
+    
+  } catch (error) {
+    console.error("Gemini Live processing error:", error);
+    return {
+      responseText: "I apologize, but I'm having trouble processing your request right now. Please try again, and I'll do my best to help you with accessibility information."
+    };
+  }
+}
+
+// Step 3: Text-to-Speech (Simulated - would use Google Text-to-Speech API)
+async function textToSpeech(text: string, language: string): Promise<string | null> {
+  try {
+    // In production, this would use Google Text-to-Speech API
+    // Return base64 encoded audio
+    
+    console.log(`[Text-to-Speech] Converting to speech (${language}): ${text.substring(0, 50)}...`);
+    
+    // Simulate audio generation - would return actual base64 encoded audio
+    // For now, return null to use browser's built-in speech synthesis
+    return null;
+    
+  } catch (error) {
+    console.error("Text-to-speech error:", error);
+    return null;
   }
 }

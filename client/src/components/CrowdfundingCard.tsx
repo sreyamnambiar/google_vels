@@ -29,16 +29,46 @@ export default function CrowdfundingCard({
   imageUrl,
 }: CrowdfundingCardProps) {
   const [isSaved, setIsSaved] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const percentage = Math.min((raised / goal) * 100, 100);
+
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  // Fallback image based on category
+  const getCategoryFallback = (category: string) => {
+    const fallbacks = {
+      'Community': '🏘️',
+      'Arts & Culture': '🎭',
+      'Education': '📚',
+      'Technology': '💻',
+      'Health': '🏥',
+      'Environment': '🌱'
+    };
+    return fallbacks[category as keyof typeof fallbacks] || '🎯';
+  };
 
   return (
     <Card className="hover-elevate overflow-hidden" data-testid={`crowdfunding-${title.toLowerCase().replace(/\s/g, '-')}`}>
-      {imageUrl && (
-        <div className="relative">
-          <img src={imageUrl} alt={title} className="w-full h-48 object-cover" />
-          <Badge className="absolute top-2 left-2">{category}</Badge>
-        </div>
-      )}
+      <div className="relative">
+        {imageUrl && !imageError ? (
+          <img 
+            src={imageUrl} 
+            alt={title} 
+            className="w-full h-48 object-cover"
+            onError={handleImageError}
+          />
+        ) : (
+          <div className="w-full h-48 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 flex items-center justify-center border-b border-gray-200 dark:border-gray-700">
+            <div className="text-center">
+              <div className="text-6xl mb-3">{getCategoryFallback(category)}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide">{category}</div>
+            </div>
+          </div>
+        )}
+        <Badge className="absolute top-3 left-3 bg-white/90 text-gray-800 border-0 shadow-sm">{category}</Badge>
+      </div>
       <CardHeader className="space-y-3">
         <CardTitle className="text-xl leading-tight">{title}</CardTitle>
         <p className="text-sm text-muted-foreground">by {organizer}</p>

@@ -10,7 +10,7 @@ import {
   insertCrowdfundingCampaignSchema,
   insertChatMessageSchema,
 } from "@shared/schema";
-import { chatWithAI, processVoiceCommand, generateMarketplaceDescription, analyzeAccessibilityFromImage, analyzeImageWithVision, processAudioWithGemini, analyzeDocumentWithGemini, processRealtimeChat } from "./gemini";
+import { chatWithAI, processVoiceCommand, generateMarketplaceDescription, analyzeAccessibilityFromImage, analyzeImageWithVision, processAudioWithGemini, analyzeDocumentWithGemini, processRealtimeChat, processLiveVoiceWithGemini } from "./gemini";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ===== AI CHAT ROUTES =====
@@ -341,13 +341,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== VISION ANALYSIS ROUTE =====
   app.post("/api/vision-analyze", async (req, res) => {
     try {
-      const { image, analysisType = 'accessibility_safety' } = req.body;
+      const { image, analysisType = 'accessibility_safety', extractText = false } = req.body;
 
       if (!image) {
         return res.status(400).json({ error: "Image is required" });
       }
 
-      const analysis = await analyzeImageWithVision(image, analysisType);
+      const analysis = await analyzeImageWithVision(image, analysisType, extractText);
       res.json({ analysis });
     } catch (error: any) {
       console.error("Vision analysis error:", error);
@@ -377,13 +377,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== DOCUMENT ANALYSIS ROUTE =====
   app.post("/api/document-analyze", async (req, res) => {
     try {
-      const { documentUrl, analysisType = 'accessibility_summary' } = req.body;
+      const { 
+        documentUrl, 
+        analysisType = 'accessibility_summary',
+        summaryLevel = 'detailed'
+      } = req.body;
 
       if (!documentUrl) {
         return res.status(400).json({ error: "Document URL is required" });
       }
 
-      const analysis = await analyzeDocumentWithGemini(documentUrl, analysisType);
+      const analysis = await analyzeDocumentWithGemini(documentUrl, analysisType, summaryLevel);
       res.json({ analysis });
     } catch (error: any) {
       console.error("Document analysis error:", error);
@@ -404,6 +408,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ response });
     } catch (error: any) {
       console.error("Realtime chat error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== LIVE VOICE ASSISTANT ROUTE =====
+  app.post("/api/live-voice-assistant", async (req, res) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      const audioFile = files?.find(f => f.fieldname === 'audio');
+      const language = req.body.language || 'en-US';
+      const enableTTS = req.body.enableTTS === 'true';
+      const userLocation = req.body.userLocation ? JSON.parse(req.body.userLocation) : null;
+
+      if (!audioFile) {
+        return res.status(400).json({ error: "Audio file is required" });
+      }
+
+      const result = await processLiveVoiceWithGemini(audioFile, language, enableTTS, userLocation);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Live voice assistant error:", error);
       res.status(500).json({ error: error.message });
     }
   });

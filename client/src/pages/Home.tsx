@@ -18,9 +18,30 @@ import { Button } from "@/components/ui/button";
 export default function Home() {
   const [showChat, setShowChat] = useState(false);
   const [showGeminiHub, setShowGeminiHub] = useState(false);
+  const [initialTab, setInitialTab] = useState<'vision' | 'voice' | 'liveVoice' | 'document' | 'chat' | 'overview'>('overview');
+
+  const openVoiceCommands = () => {
+    setInitialTab('liveVoice');
+    setShowGeminiHub(true);
+  };
+
+  const openVisionAnalysis = () => {
+    setInitialTab('vision');
+    setShowGeminiHub(true);
+  };
+
+  const openDocumentAnalysis = () => {
+    setInitialTab('document');
+    setShowGeminiHub(true);
+  };
+
+  const openAIHub = () => {
+    setInitialTab('overview');
+    setShowGeminiHub(true);
+  };
 
   if (showGeminiHub) {
-    return <GeminiAIHub />;
+    return <GeminiAIHub initialTab={initialTab} onClose={() => setShowGeminiHub(false)} />;
   }
 
   return (
@@ -43,16 +64,19 @@ export default function Home() {
               icon={Mic}
               title="Voice Commands"
               description="Navigate the platform hands-free using natural voice commands powered by Gemini AI"
+              onClick={openVoiceCommands}
             />
             <FeatureCard
               icon={Eye}
               title="AI Vision Analysis"
               description="Analyze images for accessibility, safety, and navigation assistance with advanced AI"
+              onClick={openVisionAnalysis}
             />
             <FeatureCard
               icon={FileText}
               title="Document Intelligence"
               description="Extract insights and accessibility compliance from documents using AI analysis"
+              onClick={openDocumentAnalysis}
             />
             <FeatureCard
               icon={Map}
@@ -61,7 +85,7 @@ export default function Home() {
             />
             <FeatureCard
               icon={Brain}
-              title="Gemini AI Hub"
+              title="AI Assistant Hub"
               description="Access all advanced AI features in one comprehensive accessibility platform"
             />
             <FeatureCard
@@ -69,27 +93,6 @@ export default function Home() {
               title="Multi-Modal AI"
               description="Experience the future with vision, voice, text, and location AI working together"
             />
-          </div>
-          
-          {/* Gemini AI Hub Call-to-Action */}
-          <div className="mt-12 text-center">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-8 rounded-lg max-w-4xl mx-auto">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <Brain className="h-10 w-10" />
-                <h3 className="text-2xl font-bold">Experience Advanced AI Features</h3>
-              </div>
-              <p className="text-lg mb-6 opacity-90">
-                Unlock the full power of Gemini AI with vision analysis, voice processing, document intelligence, and more!
-              </p>
-              <Button 
-                onClick={() => setShowGeminiHub(true)}
-                size="lg"
-                className="bg-white text-blue-600 hover:bg-gray-100 font-semibold px-8 py-3"
-              >
-                <Sparkles className="mr-2 h-5 w-5" />
-                Launch Gemini AI Hub
-              </Button>
-            </div>
           </div>
         </div>
       </section>
@@ -108,39 +111,9 @@ export default function Home() {
 
           <div className="mb-8">
             <MapView
-              locations={[
-                { id: '1', name: 'City General Hospital', lat: 37.7749, lng: -122.4194, type: 'hospital' },
-                { id: '2', name: 'Harmony Cafe', lat: 37.7849, lng: -122.4094, type: 'restaurant' },
-                { id: '3', name: 'Metro Shopping Center', lat: 37.7649, lng: -122.4294, type: 'mall' },
-              ]}
+              locations={[]}
               center={{ lat: 37.7749, lng: -122.4194 }}
               onLocationClick={(loc) => console.log('Selected location:', loc.name)}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <DirectoryCard
-              name="City General Hospital"
-              type="Hospital"
-              address="123 Healthcare Ave, Medical District"
-              distance="1.2 mi"
-              phone="(555) 123-4567"
-              features={["wheelchair", "audio", "visual"]}
-            />
-            <DirectoryCard
-              name="Harmony Cafe"
-              type="Restaurant"
-              address="456 Main Street, Downtown"
-              distance="0.8 mi"
-              phone="(555) 234-5678"
-              features={["wheelchair", "hearing"]}
-            />
-            <DirectoryCard
-              name="Metro Shopping Center"
-              type="Shopping Mall"
-              address="789 Commerce Blvd, City Center"
-              distance="2.1 mi"
-              features={["wheelchair", "audio", "visual", "hearing"]}
             />
           </div>
         </div>
@@ -226,6 +199,7 @@ export default function Home() {
               duration="45 min"
               difficulty="Beginner"
               topics={["WCAG Guidelines", "Screen Readers", "Keyboard Navigation"]}
+              courseUrl="https://www.udemy.com/course/website-accessibility-course/?utm_source=bing&utm_medium=udemyads&utm_campaign=BG-Search_Keyword_Beta_Prof_la.EN_cc.India&campaigntype=Search&portfolio=Bing-India&language=EN&product=Course&test=&audience=Keyword&topic=Web_Accessibility&priority=Beta&utm_content=deal4584&utm_term=_._ag_1315018296134674_._ad__._kw_Web+Accessibility+Beginner_._de_c_._dm__._pl__._ti_kwd-82189763998242%3Aaud-822297996%3Aloc-90_._li_156732_._pd__._&matchtype=p&msclkid=04834008aef71bbeba4f2900c95cf7f8&couponCode=PMNVD2025"
             />
             <EducationModule
               title="Navigating Public Spaces"
@@ -295,7 +269,6 @@ export default function Home() {
               backers={234}
               daysLeft={15}
               category="Community"
-              imageUrl="https://images.unsplash.com/photo-1586105449897-20b5efeb3229?w=400&h=300&fit=crop"
             />
             <CrowdfundingCard
               title="Audio Description Library"
@@ -306,7 +279,6 @@ export default function Home() {
               backers={512}
               daysLeft={8}
               category="Arts & Culture"
-              imageUrl="https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=300&fit=crop"
             />
             <CrowdfundingCard
               title="Sign Language Education Program"
@@ -317,7 +289,6 @@ export default function Home() {
               backers={156}
               daysLeft={22}
               category="Education"
-              imageUrl="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=300&fit=crop"
             />
           </div>
         </div>

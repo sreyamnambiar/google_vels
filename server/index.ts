@@ -9,7 +9,7 @@ const app = express();
 // Configure multer for file uploads
 const upload = multer({ 
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit for audio files
 });
 
 declare module 'http' {
@@ -22,11 +22,15 @@ declare module 'http' {
 app.use(upload.any());
 
 app.use(express.json({
+  limit: '50mb', // Increase JSON payload limit
   verify: (req, _res, buf) => {
     req.rawBody = buf;
   }
 }));
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ 
+  extended: false,
+  limit: '50mb' // Increase URL encoded payload limit
+}));
 
 app.use((req, res, next) => {
   const start = Date.now();

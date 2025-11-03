@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Upload, Eye, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { Camera, Upload, Eye, AlertTriangle, CheckCircle, Info, Volume2, VolumeX, FileText, Play, Pause } from 'lucide-react';
 
 interface AnalysisResult {
   accessibility: {
@@ -12,16 +12,22 @@ interface AnalysisResult {
     recommendations: string[];
   };
   description: string;
+  extractedText?: string;
+  textConfidence?: number;
 }
 
 export default function VisionAnalyzer() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [enableTextExtraction, setEnableTextExtraction] = useState(true);
+  const [enableTextToSpeech, setEnableTextToSpeech] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraActive, setCameraActive] = useState(false);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -79,12 +85,20 @@ export default function VisionAnalyzer() {
         },
         body: JSON.stringify({
           image: selectedImage,
-          analysisType: 'accessibility_safety'
+          analysisType: 'accessibility_safety',
+          extractText: enableTextExtraction
         }),
       });
 
       const data = await response.json();
       setResult(data.analysis);
+      
+      // Automatically read extracted text if enabled
+      if (enableTextToSpeech && data.analysis.extractedText && data.analysis.extractedText.trim()) {
+        setTimeout(() => {
+          speakText(data.analysis.extractedText);
+        }, 1000); // Wait 1 second after analysis completes
+      }
     } catch (error) {
       console.error('Analysis failed:', error);
       alert('Analysis failed. Please try again.');
@@ -93,13 +107,121 @@ export default function VisionAnalyzer() {
     }
   };
 
+  const speakText = (text: string) => {
+    if (!('speechSynthesis' in window)) {
+      alert('Text-to-speech is not supported in your browser.');
+      return;
+    }
+
+    // Stop any ongoing speech
+    speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.8;
+    utterance.pitch = 1.0;
+    utterance.volume = 0.9;
+    
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      alert('Error occurred while speaking the text.');
+    };
+    
+    currentUtteranceRef.current = utterance;
+    speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  const speakFullAnalysis = () => {
+    if (!result) return;
+    
+    let fullText = `Analysis Results: ${result.description}. `;
+    
+    if (result.extractedText && result.extractedText.trim()) {
+      fullText += `Extracted text from image: ${result.extractedText}. `;
+    }
+    
+    fullText += `Accessibility score: ${result.accessibility.score} out of 10. `;
+    
+    if (result.accessibility.issues.length > 0) {
+      fullText += `Issues found: ${result.accessibility.issues.join(', ')}. `;
+    }
+    
+    fullText += `Improvements suggested: ${result.accessibility.improvements.join(', ')}. `;
+    
+    if (result.safety.hazards.length > 0) {
+      fullText += `Safety hazards: ${result.safety.hazards.join(', ')}. `;
+    }
+    
+    fullText += `Safety recommendations: ${result.safety.recommendations.join(', ')}.`;
+    
+    speakText(fullText);
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
       <div className="flex items-center gap-3 mb-6">
         <Eye className="h-8 w-8 text-blue-600" />
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          AI Vision Accessibility Analyzer
+          AI Vision & Text Analyzer
         </h2>
+      </div>
+
+      {/* Accessibility Features Info */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+        <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+          🌟 Accessibility Features
+        </h3>
+        <ul className="text-blue-800 dark:text-blue-200 text-sm space-y-1">
+          <li>• Extract and read text from images aloud for vision assistance</li>
+          <li>• Analyze accessibility compliance of spaces and objects</li>
+          <li>• Identify safety hazards and provide recommendations</li>
+          <li>• Voice feedback for all analysis results</li>
+        </ul>
+      </div>
+
+      {/* Settings */}
+      <div className="grid md:grid-cols-2 gap-4 mb-6">
+        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-purple-600" />
+            <span className="text-sm font-medium">Extract Text from Images</span>
+          </div>
+          <button
+            onClick={() => setEnableTextExtraction(!enableTextExtraction)}
+            className={`w-12 h-6 rounded-full transition-colors ${
+              enableTextExtraction ? 'bg-purple-600' : 'bg-gray-300'
+            }`}
+          >
+            <div className={`w-5 h-5 bg-white rounded-full transform transition-transform ${
+              enableTextExtraction ? 'translate-x-6' : 'translate-x-0.5'
+            }`} />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Volume2 className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium">Auto-Read Text Aloud</span>
+          </div>
+          <button
+            onClick={() => setEnableTextToSpeech(!enableTextToSpeech)}
+            className={`w-12 h-6 rounded-full transition-colors ${
+              enableTextToSpeech ? 'bg-green-600' : 'bg-gray-300'
+            }`}
+          >
+            <div className={`w-5 h-5 bg-white rounded-full transform transition-transform ${
+              enableTextToSpeech ? 'translate-x-6' : 'translate-x-0.5'
+            }`} />
+          </button>
+        </div>
       </div>
 
       {/* Image Input Section */}
@@ -165,20 +287,90 @@ export default function VisionAnalyzer() {
 
       {/* Analyze Button */}
       {selectedImage && (
-        <button
-          onClick={analyzeImage}
-          disabled={analyzing}
-          className="w-full p-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          <Eye className="h-5 w-5" />
-          {analyzing ? 'Analyzing with AI Vision...' : 'Analyze Accessibility & Safety'}
-        </button>
+        <div className="space-y-4">
+          <button
+            onClick={analyzeImage}
+            disabled={analyzing}
+            className="w-full p-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <Eye className="h-5 w-5" />
+            {analyzing ? 'Analyzing with AI Vision...' : 'Analyze Image & Extract Text'}
+          </button>
+
+          {/* Speaking Indicator */}
+          {isSpeaking && (
+            <div className="flex items-center justify-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <Volume2 className="h-4 w-4 text-green-500 animate-pulse" />
+              <span className="text-sm text-green-600 dark:text-green-400">Reading text aloud...</span>
+              <button
+                onClick={stopSpeaking}
+                className="ml-2 px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+              >
+                Stop
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Results Section */}
       {result && (
         <div className="mt-8 space-y-6">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Analysis Results</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Analysis Results</h3>
+            <button
+              onClick={speakFullAnalysis}
+              disabled={isSpeaking}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isSpeaking ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              {isSpeaking ? 'Speaking...' : 'Read All Results'}
+            </button>
+          </div>
+          
+          {/* Extracted Text Section */}
+          {result.extractedText && result.extractedText.trim() && (
+            <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-purple-600" />
+                  <h4 className="font-semibold text-purple-900 dark:text-purple-100">
+                    Extracted Text
+                    {result.textConfidence && (
+                      <span className="text-sm text-purple-700 dark:text-purple-300 ml-2">
+                        (Confidence: {Math.round(result.textConfidence * 100)}%)
+                      </span>
+                    )}
+                  </h4>
+                </div>
+                <button
+                  onClick={() => speakText(result.extractedText!)}
+                  disabled={isSpeaking}
+                  className="flex items-center gap-1 px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
+                >
+                  <Volume2 className="h-3 w-3" />
+                  Read Text
+                </button>
+              </div>
+              <div className="bg-white dark:bg-gray-800 p-3 rounded border">
+                <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
+                  {result.extractedText}
+                </p>
+              </div>
+            </div>
+          )}
+          
+          {/* No Text Found Message */}
+          {enableTextExtraction && (!result.extractedText || !result.extractedText.trim()) && (
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Info className="h-5 w-5 text-yellow-600" />
+                <p className="text-yellow-800 dark:text-yellow-200">
+                  No readable text was detected in this image. The image may not contain text, or the text may be too blurry or small to extract.
+                </p>
+              </div>
+            </div>
+          )}
           
           {/* Description */}
           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">

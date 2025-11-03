@@ -2,17 +2,23 @@ import React, { useState } from 'react';
 import { 
   Brain, Eye, Mic, FileText, MessageSquare, 
   Camera, Upload, Volume2, Map, Users, 
-  Sparkles, Zap, Target, Trophy
+  Sparkles, Radio, ArrowLeft
 } from 'lucide-react';
 import VisionAnalyzer from './VisionAnalyzer';
 import VoiceAssistant from './VoiceAssistant';
+import LiveVoiceAssistant from './LiveVoiceAssistant';
 import DocumentAnalyzer from './DocumentAnalyzer';
 import AIChat from './AIChat';
 
-type FeatureTab = 'vision' | 'voice' | 'document' | 'chat' | 'overview';
+type FeatureTab = 'vision' | 'voice' | 'liveVoice' | 'document' | 'chat' | 'overview';
 
-export default function GeminiAIHub() {
-  const [activeTab, setActiveTab] = useState<FeatureTab>('overview');
+interface GeminiAIHubProps {
+  initialTab?: FeatureTab;
+  onClose?: () => void;
+}
+
+export default function GeminiAIHub({ initialTab = 'overview', onClose }: GeminiAIHubProps) {
+  const [activeTab, setActiveTab] = useState<FeatureTab>(initialTab);
 
   const features = [
     {
@@ -41,6 +47,21 @@ export default function GeminiAIHub() {
         'Action item extraction',
         'Real-time audio level monitoring',
         'Text-to-speech output'
+      ]
+    },
+    {
+      id: 'liveVoice' as FeatureTab,
+      name: 'Live Voice Assistant',
+      description: 'Real-time speech-to-text and text-to-speech for hearing and vision accessibility',
+      icon: Radio,
+      color: 'purple',
+      capabilities: [
+        'Real-time speech-to-text conversion',
+        'Gemini Live API integration',
+        'Text-to-speech audio responses',
+        'Location-aware responses',
+        'Multi-language support',
+        'Accessibility-first design'
       ]
     },
     {
@@ -73,39 +94,14 @@ export default function GeminiAIHub() {
     }
   ];
 
-  const hackathonFeatures = [
-    {
-      title: 'Multi-Modal AI Integration',
-      description: 'Combines vision, voice, text, and location data for comprehensive accessibility support',
-      icon: Brain,
-      stats: '4 AI Models Combined'
-    },
-    {
-      title: 'Real-Time Processing',
-      description: 'Instant analysis and feedback for immediate accessibility assistance',
-      icon: Zap,
-      stats: '< 3s Response Time'
-    },
-    {
-      title: 'Accessibility-First Design',
-      description: 'Every feature designed specifically for users with diverse disabilities',
-      icon: Target,
-      stats: '100% Accessible'
-    },
-    {
-      title: 'Scalable Architecture',
-      description: 'Built to handle high-volume requests with enterprise-grade reliability',
-      icon: Trophy,
-      stats: 'Production Ready'
-    }
-  ];
-
   const renderTabContent = () => {
     switch (activeTab) {
       case 'vision':
         return <VisionAnalyzer />;
       case 'voice':
         return <VoiceAssistant />;
+      case 'liveVoice':
+        return <LiveVoiceAssistant />;
       case 'document':
         return <DocumentAnalyzer />;
       case 'chat':
@@ -118,20 +114,11 @@ export default function GeminiAIHub() {
             <div className="text-center bg-gradient-to-r from-blue-600 to-purple-600 text-white p-8 rounded-lg">
               <div className="flex items-center justify-center gap-3 mb-4">
                 <Sparkles className="h-12 w-12" />
-                <h1 className="text-4xl font-bold">Gemini AI Hub</h1>
+                <h1 className="text-4xl font-bold">AI Assistant Hub</h1>
               </div>
               <p className="text-xl mb-6">
-                Advanced AI-Powered Accessibility Platform
+                AI-Powered Accessibility Tools
               </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-                {hackathonFeatures.map((feature, index) => (
-                  <div key={index} className="text-center">
-                    <feature.icon className="h-8 w-8 mx-auto mb-2" />
-                    <p className="font-semibold">{feature.stats}</p>
-                    <p className="text-sm opacity-90">{feature.title}</p>
-                  </div>
-                ))}
-              </div>
             </div>
 
             {/* Features Grid */}
@@ -240,24 +227,38 @@ export default function GeminiAIHub() {
       {/* Navigation Tabs */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b">
         <div className="max-w-6xl mx-auto px-4">
-          <div className="flex flex-wrap gap-1 py-4">
-            {[
-              { id: 'overview' as FeatureTab, name: 'Overview', icon: Brain },
-              ...features.map(f => ({ id: f.id, name: f.name, icon: f.icon }))
-            ].map((tab) => (
+          <div className="flex items-center gap-4 py-4">
+            {/* Back Button */}
+            {onClose && (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
+                onClick={onClose}
+                className="flex items-center gap-2 px-3 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
               >
-                <tab.icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{tab.name}</span>
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to Home</span>
               </button>
-            ))}
+            )}
+            
+            {/* Tab Navigation */}
+            <div className="flex flex-wrap gap-1 flex-1">
+              {[
+                { id: 'overview' as FeatureTab, name: 'Overview', icon: Brain },
+                ...features.map(f => ({ id: f.id, name: f.name, icon: f.icon }))
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                    activeTab === tab.id
+                      ? 'bg-blue-600 text-white shadow-lg'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <tab.icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

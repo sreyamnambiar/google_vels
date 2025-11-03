@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Clock, Volume2 } from "lucide-react";
+import { BookOpen, Clock } from "lucide-react";
 
 interface EducationModuleProps {
   title: string;
@@ -9,6 +9,7 @@ interface EducationModuleProps {
   duration: string;
   difficulty: "Beginner" | "Intermediate" | "Advanced";
   topics: string[];
+  courseUrl?: string;
 }
 
 export default function EducationModule({
@@ -17,12 +18,19 @@ export default function EducationModule({
   duration,
   difficulty,
   topics,
+  courseUrl,
 }: EducationModuleProps) {
   const difficultyColors = {
     Beginner: "secondary",
     Intermediate: "default",
     Advanced: "destructive",
   } as const;
+
+  const handleStartLearning = () => {
+    if (courseUrl) {
+      window.open(courseUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   return (
     <Card className="hover-elevate" data-testid={`module-${title.toLowerCase().replace(/\s/g, '-')}`}>
@@ -52,11 +60,12 @@ export default function EducationModule({
           ))}
         </div>
         <div className="flex gap-2">
-          <Button className="flex-1" data-testid="button-start-module">
+          <Button 
+            className="flex-1" 
+            onClick={handleStartLearning}
+            data-testid="button-start-module"
+          >
             Start Learning
-          </Button>
-          <Button variant="outline" size="icon" aria-label="Listen to module" data-testid="button-listen-module">
-            <Volume2 className="h-4 w-4" />
           </Button>
         </div>
       </CardContent>
