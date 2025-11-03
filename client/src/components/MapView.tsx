@@ -1,7 +1,5 @@
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, ZoomIn, ZoomOut } from "lucide-react";
-import { useState } from "react";
+import { APIProvider, Map, Marker, InfoWindow } from '@vis.gl/react-google-maps';
+import { useState } from 'react';
 
 interface Location {
   id: string;
@@ -13,59 +11,65 @@ interface Location {
 
 interface MapViewProps {
   locations: Location[];
-  center?: { lat: number; lng: number };
+  center: { lat: number; lng: number };
   onLocationClick?: (location: Location) => void;
 }
 
 export default function MapView({ locations, center, onLocationClick }: MapViewProps) {
-  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-  const handleLocationClick = (location: Location) => {
-    setSelectedLocation(location.id);
-    onLocationClick?.(location);
-  };
-
-  return (
-    <Card className="relative overflow-hidden h-[500px]" data-testid="map-view">
-      <div className="absolute inset-0 bg-muted flex items-center justify-center">
-        <div className="text-center space-y-4 p-6">
-          <MapPin className="h-16 w-16 text-primary mx-auto" />
-          <div>
-            <h3 className="font-semibold text-lg mb-2">Interactive Map View</h3>
-            <p className="text-sm text-muted-foreground max-w-md">
-              In the full version, this will display an interactive map with {locations.length} accessible locations
-              using Google Maps or Leaflet integration
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 justify-center pt-4">
-            {locations.slice(0, 3).map((location) => (
-              <Button
-                key={location.id}
-                variant={selectedLocation === location.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleLocationClick(location)}
-                className="gap-2"
-                data-testid={`map-location-${location.id}`}
-              >
-                <MapPin className="h-3 w-3" />
-                {location.name}
-              </Button>
+  if (!apiKey) {
+    return (
+      <div className="h-96 bg-gray-100 flex items-center justify-center rounded-lg">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold mb-2">Interactive Map</h3>
+          <p className="text-gray-600">Google Maps API key required</p>
+          <div className="mt-4 space-y-2">
+            {locations.map(location => (
+              <div key={location.id} className="p-2 bg-white rounded shadow">
+                <strong>{location.name}</strong> - {location.type}
+              </div>
             ))}
           </div>
         </div>
       </div>
+    );
+  }
 
-      <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
-        <Button variant="secondary" size="icon" aria-label="Zoom in" data-testid="button-zoom-in">
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-        <Button variant="secondary" size="icon" aria-label="Zoom out" data-testid="button-zoom-out">
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        <Button variant="secondary" size="icon" aria-label="Get directions" data-testid="button-my-location">
-          <Navigation className="h-4 w-4" />
-        </Button>
-      </div>
-    </Card>
+  return (
+    <div className="h-96 w-full rounded-lg overflow-hidden">
+      <APIProvider apiKey={apiKey}>
+        <Map
+          center={center}
+          zoom={13}
+          gestureHandling="greedy"
+          disableDefaultUI={false}
+        >
+          {locations.map((location) => (
+            <Marker
+              key={location.id}
+              position={{ lat: location.lat, lng: location.lng }}
+              onClick={() => {
+                setSelectedLocation(location);
+                onLocationClick?.(location);
+              }}
+            />
+          ))}
+          
+          {selectedLocation && (
+            <InfoWindow
+              position={{ lat: selectedLocation.lat, lng: selectedLocation.lng }}
+              onCloseClick={() => setSelectedLocation(null)}
+            >
+              <div className="p-2">
+                <h3 className="font-semibold">{selectedLocation.name}</h3>
+                <p className="text-sm text-gray-600">{selectedLocation.type}</p>
+              </div>
+            </InfoWindow>
+          )}
+        </Map>
+      </APIProvider>
+    </div>
   );
 }

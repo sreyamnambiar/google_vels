@@ -16,14 +16,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== AI CHAT ROUTES =====
   app.post("/api/chat", async (req, res) => {
     try {
-      const { message, sessionId, conversationHistory } = req.body;
+      const { message, sessionId, conversationHistory, userLocation, isLocationQuery } = req.body;
 
       if (!message) {
         return res.status(400).json({ error: "Message is required" });
       }
 
-      // Get AI response
-      const aiResponse = await chatWithAI(message, conversationHistory);
+      // Get AI response with location context
+      const aiResponse = await chatWithAI(message, conversationHistory, userLocation, isLocationQuery);
+
+      // Handle both string and object responses
+      const responseText = typeof aiResponse === 'string' ? aiResponse : aiResponse.response;
+      const mapData = typeof aiResponse === 'object' && aiResponse.mapData ? aiResponse.mapData : null;
 
       // Store messages
       await storage.createChatMessage({
@@ -34,12 +38,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const assistantMessage = await storage.createChatMessage({
         role: "assistant",
-        content: aiResponse,
+        content: responseText,
         sessionId: sessionId || null,
       });
 
       res.json({
-        response: aiResponse,
+        response: responseText,
+        mapData: mapData,
         message: assistantMessage,
       });
     } catch (error: any) {

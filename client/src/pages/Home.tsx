@@ -298,7 +298,19 @@ export default function Home() {
 
       <Footer />
 
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+        {/* Chat Button */}
+        {!showChat && (
+          <Button
+            onClick={() => setShowChat(true)}
+            className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+            aria-label="Open AI Assistant Chat"
+          >
+            <Sparkles className="h-6 w-6 text-white" />
+          </Button>
+        )}
+        
+        {/* Voice Input Button */}
         <VoiceInputButton
           onVoiceInput={(text) => {
             console.log("Voice input:", text);
