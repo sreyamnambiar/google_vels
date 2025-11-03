@@ -10,12 +10,18 @@ import NGOCard from "@/components/NGOCard";
 import CrowdfundingCard from "@/components/CrowdfundingCard";
 import MapView from "@/components/MapView";
 import Footer from "@/components/Footer";
-import { Mic, Map, ShoppingBag, Users, BookOpen, Sparkles } from "lucide-react";
+import GeminiAIHub from "@/components/GeminiAIHub";
+import { Mic, Map, ShoppingBag, Users, BookOpen, Sparkles, Brain, Eye, FileText } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const [showChat, setShowChat] = useState(false);
+  const [showGeminiHub, setShowGeminiHub] = useState(false);
+
+  if (showGeminiHub) {
+    return <GeminiAIHub />;
+  }
 
   return (
     <div className="min-h-screen">
@@ -39,30 +45,51 @@ export default function Home() {
               description="Navigate the platform hands-free using natural voice commands powered by Gemini AI"
             />
             <FeatureCard
+              icon={Eye}
+              title="AI Vision Analysis"
+              description="Analyze images for accessibility, safety, and navigation assistance with advanced AI"
+            />
+            <FeatureCard
+              icon={FileText}
+              title="Document Intelligence"
+              description="Extract insights and accessibility compliance from documents using AI analysis"
+            />
+            <FeatureCard
               icon={Map}
-              title="Accessible Places"
-              description="Discover hospitals, restaurants, and public spaces with detailed accessibility features"
+              title="Smart Location Assistant"
+              description="Find accessible places with AI-powered recommendations and real-time directions"
             />
             <FeatureCard
-              icon={ShoppingBag}
-              title="Creative Marketplace"
-              description="Buy and sell creative works with AI-generated descriptions and multilingual support"
-            />
-            <FeatureCard
-              icon={Users}
-              title="Community"
-              description="Share experiences, inspire others, and connect with an inclusive community"
-            />
-            <FeatureCard
-              icon={BookOpen}
-              title="Learn & Grow"
-              description="Access educational modules with simplified, translated content for easy learning"
+              icon={Brain}
+              title="Gemini AI Hub"
+              description="Access all advanced AI features in one comprehensive accessibility platform"
             />
             <FeatureCard
               icon={Sparkles}
-              title="AI Assistant"
-              description="Get personalized guidance and support from your AI companion anytime"
+              title="Multi-Modal AI"
+              description="Experience the future with vision, voice, text, and location AI working together"
             />
+          </div>
+          
+          {/* Gemini AI Hub Call-to-Action */}
+          <div className="mt-12 text-center">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-8 rounded-lg max-w-4xl mx-auto">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <Brain className="h-10 w-10" />
+                <h3 className="text-2xl font-bold">Experience Advanced AI Features</h3>
+              </div>
+              <p className="text-lg mb-6 opacity-90">
+                Unlock the full power of Gemini AI with vision analysis, voice processing, document intelligence, and more!
+              </p>
+              <Button 
+                onClick={() => setShowGeminiHub(true)}
+                size="lg"
+                className="bg-white text-blue-600 hover:bg-gray-100 font-semibold px-8 py-3"
+              >
+                <Sparkles className="mr-2 h-5 w-5" />
+                Launch Gemini AI Hub
+              </Button>
+            </div>
           </div>
         </div>
       </section>

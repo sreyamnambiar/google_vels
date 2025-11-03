@@ -10,7 +10,7 @@ import {
   insertCrowdfundingCampaignSchema,
   insertChatMessageSchema,
 } from "@shared/schema";
-import { chatWithAI, processVoiceCommand, generateMarketplaceDescription, analyzeAccessibilityFromImage } from "./gemini";
+import { chatWithAI, processVoiceCommand, generateMarketplaceDescription, analyzeAccessibilityFromImage, analyzeImageWithVision, processAudioWithGemini, analyzeDocumentWithGemini, processRealtimeChat } from "./gemini";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ===== AI CHAT ROUTES =====
@@ -334,6 +334,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(campaign);
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== VISION ANALYSIS ROUTE =====
+  app.post("/api/vision-analyze", async (req, res) => {
+    try {
+      const { image, analysisType = 'accessibility_safety' } = req.body;
+
+      if (!image) {
+        return res.status(400).json({ error: "Image is required" });
+      }
+
+      const analysis = await analyzeImageWithVision(image, analysisType);
+      res.json({ analysis });
+    } catch (error: any) {
+      console.error("Vision analysis error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== SPEECH ANALYSIS ROUTE =====
+  app.post("/api/speech-analyze", async (req, res) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      const audioFile = files?.find(f => f.fieldname === 'audio');
+      const language = req.body.language || 'en-US';
+
+      if (!audioFile) {
+        return res.status(400).json({ error: "Audio file is required" });
+      }
+
+      const result = await processAudioWithGemini(audioFile, language);
+      res.json({ result });
+    } catch (error: any) {
+      console.error("Speech analysis error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== DOCUMENT ANALYSIS ROUTE =====
+  app.post("/api/document-analyze", async (req, res) => {
+    try {
+      const { documentUrl, analysisType = 'accessibility_summary' } = req.body;
+
+      if (!documentUrl) {
+        return res.status(400).json({ error: "Document URL is required" });
+      }
+
+      const analysis = await analyzeDocumentWithGemini(documentUrl, analysisType);
+      res.json({ analysis });
+    } catch (error: any) {
+      console.error("Document analysis error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== REAL-TIME CHAT ROUTE =====
+  app.post("/api/realtime-chat", async (req, res) => {
+    try {
+      const { message, context, userId, roomId } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      const response = await processRealtimeChat(message, context, userId, roomId);
+      res.json({ response });
+    } catch (error: any) {
+      console.error("Realtime chat error:", error);
       res.status(500).json({ error: error.message });
     }
   });
